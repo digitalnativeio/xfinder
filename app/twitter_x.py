@@ -1,5 +1,15 @@
 from waybackpy import WaybackMachineCDXServerAPI
 from bs4 import BeautifulSoup
+import re
+import importlib.machinery
+
+if not hasattr(importlib.machinery.FileFinder, "find_module"):
+    def _find_module(self, fullname):
+        spec = self.find_spec(fullname)
+        return spec.loader if spec else None
+    importlib.machinery.FileFinder.find_module = _find_module
+
+import snscrape.modules.twitter as sntwitter
 
 from .utils import http_get
 
@@ -46,3 +56,51 @@ def get_current_user_info_x(username):
         "platform": "x",
         "username": username,
     }
+
+
+def get_user_history_x(username):
+    """Return first tweet and its first reply for a user using snscrape.
+
+    This uses public web scraping via snscrape, so it does not require API
+    credentials. It returns a list of history entries each containing a
+    timestamp and URL. The first item is the earliest tweet by the user and
+    the second (if available) is the earliest reply to that tweet. Mentioned
+    handles in the reply are extracted to help infer prior usernames.
+    """
+
+    # Fetch all tweets from the user and locate the oldest one
+    tweet_scraper = sntwitter.TwitterSearchScraper(f"from:{username}")
+    tweets = list(tweet_scraper.get_items())
+    if not tweets:
+        return []
+
+    first_tweet = tweets[-1]
+    history = [
+        {
+            "timestamp": first_tweet.date.isoformat(),
+            "url": first_tweet.url,
+            "type": "first_tweet",
+            "content": first_tweet.rawContent,
+        }
+    ]
+
+    # Find replies to the first tweet and pick the earliest one
+    reply_scraper = sntwitter.TwitterSearchScraper(
+        f"conversation_id:{first_tweet.id}"
+    )
+    replies = list(reply_scraper.get_items())
+    if replies:
+        first_reply = replies[-1]
+        mentions = re.findall(r"@([A-Za-z0-9_]+)", first_reply.rawContent)
+        history.append(
+            {
+                "timestamp": first_reply.date.isoformat(),
+                "url": first_reply.url,
+                "type": "first_reply",
+                "user": first_reply.user.username,
+                "content": first_reply.rawContent,
+                "mentions": mentions,
+            }
+        )
+
+    return history
