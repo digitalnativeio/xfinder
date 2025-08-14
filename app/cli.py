@@ -43,7 +43,12 @@ def main():
     else:
         print("\nHistory:")
         for entry in history:
-            print(f"- {entry['timestamp']} | {entry['url']}")
+            line = f"- {entry['timestamp']} | {entry.get('type', 'entry')} | {entry['url']}"
+            print(line)
+            if 'user' in entry:
+                print(f"  user: {entry['user']}")
+            if entry.get('mentions'):
+                print(f"  mentions: {', '.join(entry['mentions'])}")
 
 if __name__ == "__main__":
     main()
