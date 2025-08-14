@@ -1,10 +1,25 @@
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from waybackpy import WaybackMachineCDXServerAPI
 
-def http_get(url, **kwargs):
-    """GET request with error handling."""
+
+def http_get(url, timeout=10, retries=3, backoff_factor=0.5, **kwargs):
+    """GET request with retries and error handling."""
+    session = requests.Session()
+    retry = Retry(
+        total=retries,
+        read=retries,
+        connect=retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=[500, 502, 503, 504],
+        allowed_methods=["GET"],
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
     try:
-        resp = requests.get(url, timeout=10, **kwargs)
+        resp = session.get(url, timeout=timeout, **kwargs)
         resp.raise_for_status()
         return resp
     except Exception as e:
