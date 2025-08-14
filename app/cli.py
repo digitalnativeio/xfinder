@@ -15,7 +15,8 @@ def main():
 
     platform = PLATFORMS[args.platform]
     get_current_user_info = platform["get_current_user_info"]
-    get_user_history = platform["get_user_history"]
+    # History lookup may not be implemented for every platform
+    get_user_history = platform.get("get_user_history")
 
     # Current info
     current_info = get_current_user_info(args.username)
@@ -27,7 +28,7 @@ def main():
         print("\nCurrent: No current info found.")
 
     # History
-    if args.no_history:
+    if args.no_history or not get_user_history:
         print("\nNo history found or history skipped.")
         return
 
