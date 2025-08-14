@@ -1,6 +1,7 @@
 from waybackpy import WaybackMachineCDXServerAPI
 from bs4 import BeautifulSoup
-import requests
+
+from .utils import http_get
 
 def get_current_user_info_x(username):
     """Get latest archived Twitter profile info using Wayback Machine."""
@@ -17,11 +18,11 @@ def get_current_user_info_x(username):
         return None
 
     # Fetch archived HTML
-    try:
-        html = requests.get(snapshot_url, timeout=10).text
-    except Exception as e:
-        print(f"[Wayback] Error fetching HTML: {e}")
+    resp = http_get(snapshot_url, timeout=30)
+    if not resp:
+        print(f"[Wayback] Error fetching HTML: unable to retrieve {snapshot_url}")
         return None
+    html = resp.text
 
     # Parse HTML
     soup = BeautifulSoup(html, "html.parser")
