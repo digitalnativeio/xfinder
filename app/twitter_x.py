@@ -69,8 +69,17 @@ def get_user_history_x(username):
     """
 
     # Fetch all tweets from the user and locate the oldest one
-    tweet_scraper = sntwitter.TwitterSearchScraper(f"from:{username}")
-    tweets = list(tweet_scraper.get_items())
+    try:
+        tweet_scraper = sntwitter.TwitterSearchScraper(f"from:{username}")
+        tweets = list(tweet_scraper.get_items())
+    except Exception as e:
+        # snscrape relies on Twitter's undocumented APIs which often change
+        # or become inaccessible. If we hit network or API errors, return an
+        # empty history instead of raising so the caller can handle the lack
+        # of data gracefully.
+        print(f"[History] Error scraping tweets for {username}: {e}")
+        return []
+
     if not tweets:
         return []
 
@@ -85,10 +94,14 @@ def get_user_history_x(username):
     ]
 
     # Find replies to the first tweet and pick the earliest one
-    reply_scraper = sntwitter.TwitterSearchScraper(
-        f"conversation_id:{first_tweet.id}"
-    )
-    replies = list(reply_scraper.get_items())
+    try:
+        reply_scraper = sntwitter.TwitterSearchScraper(
+            f"conversation_id:{first_tweet.id}"
+        )
+        replies = list(reply_scraper.get_items())
+    except Exception as e:
+        print(f"[History] Error scraping replies for {username}: {e}")
+        replies = []
     if replies:
         first_reply = replies[-1]
         mentions = re.findall(r"@([A-Za-z0-9_]+)", first_reply.rawContent)
